@@ -1,0 +1,284 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      h1 {
+        color: white;
+      }
+      h3 {
+        color: white;
+      }
+      body {
+        font: 13px Tahoma, Geneva, sans-serif;
+        background-color: gray;
+      }
+      form {
+        padding: 3px;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        background-color: gray;
+      }
+      form input {
+        border: 0;
+        padding: 10px;
+        width: 90%;
+        margin-right: .5%;
+      }
+      form button {
+        width: 9%;
+        background: rgb(130, 224, 255);
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+      }
+      form button:hover {
+        background: rgb(100, 175, 200);
+      }
+      input {
+        border: 0;
+        padding: 10px;
+        margin-right: .5%;
+        border-radius: 8px;
+      }
+      button {
+        background: rgb(130, 224, 255);
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+      }
+      button:hover {
+        background: rgb(100, 175, 200);
+      }
+      #usersConnected {
+        background-color: white;
+        border-radius: 8px;
+      }
+      #usersConnected li {
+        margin-right: 10px;
+      }
+      #usersConnected li::before {
+        content: "\2014";
+        color: black;
+        font-weight: bold;
+        display: inline-block;
+        width: 1em;
+        position: relative;
+        margin-right: 7px;
+      }
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+      #messages li {
+        padding: 5px 10px;
+        background: #aaa;
+      }
+      #messages li:nth-child(odd) {
+        background: #eee;
+      }
+      #messages {
+        margin-bottom: 40px
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #888;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+      .right {
+        position: absolute;
+        right: 0px;
+        width: auto;
+        padding: 10px;
+      }
+      .language-header-ul {
+        margin: 0;
+        overflow: hidden;
+        background: rgb(130, 224, 255);
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+      }
+      .language-header-ul li {
+        display: inline;
+        float: right;
+        list-style-type: none;
+      }
+      .language-header-ul li:last-child {
+        border-right: none;
+      }
+      .language-header-ul li a {
+        display: block;
+        color: black;
+        text-align: center;
+        padding: 14px 16px;
+        text-decoration: none;
+      }
+      .language-header-ul li a:hover {
+        background: rgb(100, 175, 200);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header" style="background-color: gray; position: fixed; height: 160px; width: 98%; margin-left: 1%;">
+      <h1 id="title" style="margin-top: 5px;">Socket.IO Chat</h1>
+      <input id="nick" maxlength="20" autocomplete="off" style="margin-right: 5px;" placeholder="Enter your nickname"/><button id="save">Save</button>
+      <div style="text-align: right;">
+        <h3>Users connected: <strong id="totalConnected">0</strong></h3>
+        <ul id="usersConnected" style="height: 65px; width: 50%; float: right; overflow-y: auto;"></ul>
+      </div>
+    </div>
+    </br>
+    </br>
+    </br>
+    </br>
+    </br>
+    </br>
+    </br>
+    </br>
+    </br>
+    </br>
+    <div id="messages" style="width: 98%; margin-left: 1%; margin-top: 5px; overflow-y: auto; padding-bottom: 70px;"></div>
+    <form action="" style="height: 110px;">
+      <div id="userTyping" style="position: absolute; bottom: 90px; left: 15px;"></div>
+      <input id="m" maxlength="255" autocomplete="off" placeholder="Enter message" style="width: 98%; margin-left: 1%; margin-bottom: 5px; margin-top: 25px;">      <button id="send" style="width: auto; float: right; margin-right: 1%;">Send</button>
+      <button id="clear" style="width: auto; float: left; margin-left: 1%;">Clear chat history</button>
+    </form>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"> </script>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/notify/0.4.2/notify.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/notify/0.4.2/notify.min.js"></script>
+    <script>
+      $(function () {
+        var socket    = io();
+        var id        = Math.floor(1000 + Math.random() * 9000);
+        var nickname  = 'Guest-'+id;
+        var ele = document.createElement("script");
+
+        socket.emit('user update', id);
+
+        $(window).unload(function(){
+          socket.emit('user update delete', id, nickname);
+        });
+
+        $('#clear').on('click', function(){
+          $('#messages').empty();
+          return false;
+        });
+
+        $(this).find('input').keypress(function(e) {
+          if(e.which == 10 || e.which == 13) {
+            if($('#nick').val() != '' && $('#nick').val() != nickname){
+              socket.emit('change nickname', id, $('#nick').val(), nickname);
+              $('#nick').focus();
+            }
+            if($('#m').val() != ''){
+              socket.emit('chat message', nickname+': '+$('#m').val());
+              $('#m').val('');
+              $('#m').focus();
+            }
+            return false;
+          }
+        });
+
+        $('#m').on('keyup', function(){
+          is_typing = false;
+          if($('#m').val() == ''){
+            is_typing = false;
+          } else {
+            is_typing = true;
+          }
+          socket.emit('user is typing', id, nickname, is_typing);
+        });
+
+        $('#save').on('click', function(){
+            if($('#nick').val() != '' && $('#nick').val() != nickname){
+              socket.emit('change nickname', id, $('#nick').val(), nickname);
+              $('#nick').focus();
+            }
+            return false;
+        });
+
+        $('#send').on('click', function(){
+          if($('#m').val() != ''){
+            socket.emit('chat message', nickname+': '+$('#m').val());
+            $('#m').val('');
+            $('#m').focus();
+          }
+          return false;
+        });
+
+        socket.on('user update', function(nicks, connected){
+          $('#usersConnected').empty();
+          if(nicks != 0){
+            for(var i = 0; i < nicks.length; i++){
+              $('#usersConnected').append($('<li id="'+nicks[i]+'">').text(nicks[i]));
+            }
+          }
+          if(connected != undefined){
+            $('#totalConnected').html(connected);
+          }
+        });
+
+        socket.on('user update delete', function(connected, nicks){
+          $('#usersConnected').empty();
+          if(nicks != 0){
+            for(var i = 0; i < nicks.length; i++){
+              $('#usersConnected').append($('<li id="'+nicks[i]+'">').text(nicks[i]));
+            }
+          }
+          if(connected != undefined){
+            $('#totalConnected').html(connected);
+          }
+        });
+
+        socket.on('user is typing', function(nick, is_typing){
+          if(is_typing){
+            $('#userTyping').html(nick+' is typing...');
+          } else {
+            $('#userTyping').html('');
+          }
+        });
+
+        socket.on('chat message', function(msg){
+          $('#messages').append($('<li style="overflow-x: auto;">').text(msg));
+          window.scrollTo(0, document.body.scrollHeight);
+          return false;
+        });
+
+        socket.on('change nickname', function(user_id, nick, msg){
+          if(user_id == id){
+            nickname = nick;
+          }
+          $('#messages').append($('<li style="overflow-x: auto;">').text(msg));
+          window.scrollTo(0, document.body.scrollHeight);
+          return false;
+        });
+
+        socket.on('call notify', function(user_id, message){
+          if(user_id == id){
+            $.notify(message, 'warn');
+          } else if(user_id == nickname){
+            $.notify(message, 'warn');
+          }
+          return false;
+        });
+      });
+    </script>
+  </body>
+</html>
